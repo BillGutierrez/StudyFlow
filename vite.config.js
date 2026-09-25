@@ -9,5 +9,5 @@ export default defineConfig({
   // https://<usuario>.github.io/<nombre-repo>/, so Vite needs to know
   // that sub-path to build correct asset links (and so the PWA manifest
   // and service worker resolve correctly).
-  base: '/studyflow/',
+  base: '/StudyFlow/',
 })
