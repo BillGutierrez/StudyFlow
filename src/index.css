@@ -1,0 +1,111 @@
+:root {
+  --bg: #F6F7FB;
+  --surface: #FFFFFF;
+  --surface-alt: #F0F1F7;
+  --border: #E4E6F0;
+  --ink: #1B1D28;
+  --ink-soft: #676B7E;
+  --ink-faint: #9195A8;
+
+  --brand: #5B5BD6;
+  --brand-dark: #4444B0;
+  --brand-soft: #EEEEFC;
+
+  --verde: #2F9E63;
+  --verde-bg: #E1F5EA;
+  --amarillo: #C68A1D;
+  --amarillo-bg: #FBEFD9;
+  --rojo: #E5473A;
+  --rojo-bg: #FCE3E0;
+  --vencida: #8A3B44;
+  --vencida-bg: #F2DEE0;
+  --fuego: #F2994A;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --shadow: 0 1px 2px rgba(20, 20, 40, 0.04), 0 6px 20px rgba(20, 20, 40, 0.06);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #14151D;
+    --surface: #1C1E29;
+    --surface-alt: #23253193;
+    --surface-alt: #252734;
+    --border: #333648;
+    --ink: #EDEEF5;
+    --ink-soft: #A6A9BE;
+    --ink-faint: #7A7D92;
+    --brand-soft: #2A2B54;
+    --verde-bg: #1B3327;
+    --amarillo-bg: #3A2E14;
+    --rojo-bg: #3A211D;
+    --vencida-bg: #35191C;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14151D;
+  --surface: #1C1E29;
+  --surface-alt: #252734;
+  --border: #333648;
+  --ink: #EDEEF5;
+  --ink-soft: #A6A9BE;
+  --ink-faint: #7A7D92;
+  --brand-soft: #2A2B54;
+  --verde-bg: #1B3327;
+  --amarillo-bg: #3A2E14;
+  --rojo-bg: #3A211D;
+  --vencida-bg: #35191C;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+h1, h2, h3 {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  margin: 0;
+  color: var(--ink);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--brand);
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100%;
+}
