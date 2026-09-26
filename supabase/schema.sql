@@ -77,7 +77,8 @@ begin
 end;
 $$;
 
-create trigger if not exists on_auth_user_created
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
 
@@ -244,12 +245,14 @@ as $$
 $$;
 
 -- Políticas RLS basadas en roles y propiedad del contenido
-create policy if not exists "profiles_select_all_authenticated"
+drop policy if exists "profiles_select_all_authenticated" on public.profiles;
+create policy "profiles_select_all_authenticated"
 on public.profiles
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "profiles_update_own"
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_update_own"
 on public.profiles
 for update
 using (id = auth.uid())
@@ -259,196 +262,233 @@ with check (
   )
 );
 
-create policy if not exists "profiles_admin_update"
+drop policy if exists "profiles_admin_update" on public.profiles;
+create policy "profiles_admin_update"
 on public.profiles
 for update
 using (public.is_superadmin())
 with check (public.is_superadmin());
 
-create policy if not exists "courses_read_all_authenticated"
+drop policy if exists "courses_read_all_authenticated" on public.courses;
+create policy "courses_read_all_authenticated"
 on public.courses
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "courses_admin_write"
+drop policy if exists "courses_admin_write" on public.courses;
+create policy "courses_admin_write"
 on public.courses
 for all
 using (public.is_superadmin())
 with check (public.is_superadmin());
 
-create policy if not exists "labels_read_all_authenticated"
+drop policy if exists "labels_read_all_authenticated" on public.labels;
+create policy "labels_read_all_authenticated"
 on public.labels
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "labels_admin_write"
+drop policy if exists "labels_admin_write" on public.labels;
+create policy "labels_admin_write"
 on public.labels
 for all
 using (public.is_superadmin())
 with check (public.is_superadmin());
 
-create policy if not exists "schedule_read_all_authenticated"
+drop policy if exists "schedule_read_all_authenticated" on public.schedule_blocks;
+create policy "schedule_read_all_authenticated"
 on public.schedule_blocks
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "schedule_admin_write"
+drop policy if exists "schedule_admin_write" on public.schedule_blocks;
+create policy "schedule_admin_write"
 on public.schedule_blocks
 for all
 using (public.is_superadmin())
 with check (public.is_superadmin());
 
-create policy if not exists "tasks_read_all_authenticated"
+drop policy if exists "tasks_read_all_authenticated" on public.tasks;
+create policy "tasks_read_all_authenticated"
 on public.tasks
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "tasks_insert_own_or_admin"
+drop policy if exists "tasks_insert_own_or_admin" on public.tasks;
+create policy "tasks_insert_own_or_admin"
 on public.tasks
 for insert
 with check (creado_por = auth.uid() or public.is_superadmin());
 
-create policy if not exists "tasks_update_own_or_admin"
+drop policy if exists "tasks_update_own_or_admin" on public.tasks;
+create policy "tasks_update_own_or_admin"
 on public.tasks
 for update
 using (creado_por = auth.uid() or public.is_superadmin())
 with check (creado_por = auth.uid() or public.is_superadmin());
 
-create policy if not exists "tasks_delete_own_or_admin"
+drop policy if exists "tasks_delete_own_or_admin" on public.tasks;
+create policy "tasks_delete_own_or_admin"
 on public.tasks
 for delete
 using (creado_por = auth.uid() or public.is_superadmin());
 
-create policy if not exists "task_completions_read_all_authenticated"
+drop policy if exists "task_completions_read_all_authenticated" on public.task_completions;
+create policy "task_completions_read_all_authenticated"
 on public.task_completions
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "task_completions_insert_self"
+drop policy if exists "task_completions_insert_self" on public.task_completions;
+create policy "task_completions_insert_self"
 on public.task_completions
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "task_completions_delete_self"
+drop policy if exists "task_completions_delete_self" on public.task_completions;
+create policy "task_completions_delete_self"
 on public.task_completions
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "comments_read_all_authenticated"
+drop policy if exists "comments_read_all_authenticated" on public.comments;
+create policy "comments_read_all_authenticated"
 on public.comments
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "comments_insert_self"
+drop policy if exists "comments_insert_self" on public.comments;
+create policy "comments_insert_self"
 on public.comments
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "comments_update_self_or_admin"
+drop policy if exists "comments_update_self_or_admin" on public.comments;
+create policy "comments_update_self_or_admin"
 on public.comments
 for update
 using (user_id = auth.uid() or public.is_superadmin())
 with check (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "comments_delete_self_or_admin"
+drop policy if exists "comments_delete_self_or_admin" on public.comments;
+create policy "comments_delete_self_or_admin"
 on public.comments
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "comment_reactions_read_all_authenticated"
+drop policy if exists "comment_reactions_read_all_authenticated" on public.comment_reactions;
+create policy "comment_reactions_read_all_authenticated"
 on public.comment_reactions
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "comment_reactions_insert_self"
+drop policy if exists "comment_reactions_insert_self" on public.comment_reactions;
+create policy "comment_reactions_insert_self"
 on public.comment_reactions
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "comment_reactions_delete_self"
+drop policy if exists "comment_reactions_delete_self" on public.comment_reactions;
+create policy "comment_reactions_delete_self"
 on public.comment_reactions
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "chat_messages_read_all_authenticated"
+drop policy if exists "chat_messages_read_all_authenticated" on public.chat_messages;
+create policy "chat_messages_read_all_authenticated"
 on public.chat_messages
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "chat_messages_insert_self"
+drop policy if exists "chat_messages_insert_self" on public.chat_messages;
+create policy "chat_messages_insert_self"
 on public.chat_messages
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "chat_messages_update_self_or_admin"
+drop policy if exists "chat_messages_update_self_or_admin" on public.chat_messages;
+create policy "chat_messages_update_self_or_admin"
 on public.chat_messages
 for update
 using (user_id = auth.uid() or public.is_superadmin())
 with check (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "chat_messages_delete_self_or_admin"
+drop policy if exists "chat_messages_delete_self_or_admin" on public.chat_messages;
+create policy "chat_messages_delete_self_or_admin"
 on public.chat_messages
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "chat_reactions_read_all_authenticated"
+drop policy if exists "chat_reactions_read_all_authenticated" on public.chat_reactions;
+create policy "chat_reactions_read_all_authenticated"
 on public.chat_reactions
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "chat_reactions_insert_self"
+drop policy if exists "chat_reactions_insert_self" on public.chat_reactions;
+create policy "chat_reactions_insert_self"
 on public.chat_reactions
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "chat_reactions_delete_self"
+drop policy if exists "chat_reactions_delete_self" on public.chat_reactions;
+create policy "chat_reactions_delete_self"
 on public.chat_reactions
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "notifications_select_own"
+drop policy if exists "notifications_select_own" on public.notifications;
+create policy "notifications_select_own"
 on public.notifications
 for select
 using (user_id = auth.uid());
 
-create policy if not exists "notifications_insert_own_or_admin"
+drop policy if exists "notifications_insert_own_or_admin" on public.notifications;
+create policy "notifications_insert_own_or_admin"
 on public.notifications
 for insert
 with check (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "notifications_update_own_or_admin"
+drop policy if exists "notifications_update_own_or_admin" on public.notifications;
+create policy "notifications_update_own_or_admin"
 on public.notifications
 for update
 using (user_id = auth.uid() or public.is_superadmin())
 with check (user_id = auth.uid() or public.is_superadmin());
 
-create policy if not exists "reports_select_admin"
+drop policy if exists "reports_select_admin" on public.reports;
+create policy "reports_select_admin"
 on public.reports
 for select
 using (public.is_superadmin() or user_id = auth.uid());
 
-create policy if not exists "reports_insert_self"
+drop policy if exists "reports_insert_self" on public.reports;
+create policy "reports_insert_self"
 on public.reports
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "reports_update_admin"
+drop policy if exists "reports_update_admin" on public.reports;
+create policy "reports_update_admin"
 on public.reports
 for update
 using (public.is_superadmin())
 with check (public.is_superadmin());
 
-create policy if not exists "missions_claims_read_all_authenticated"
+drop policy if exists "missions_claims_read_all_authenticated" on public.missions_claims;
+create policy "missions_claims_read_all_authenticated"
 on public.missions_claims
 for select
 using (auth.uid() is not null);
 
-create policy if not exists "missions_claims_insert_self"
+drop policy if exists "missions_claims_insert_self" on public.missions_claims;
+create policy "missions_claims_insert_self"
 on public.missions_claims
 for insert
 with check (user_id = auth.uid());
 
-create policy if not exists "missions_claims_delete_self"
+drop policy if exists "missions_claims_delete_self" on public.missions_claims;
+create policy "missions_claims_delete_self"
 on public.missions_claims
 for delete
 using (user_id = auth.uid() or public.is_superadmin());
@@ -457,20 +497,20 @@ using (user_id = auth.uid() or public.is_superadmin());
 -- Este horario debe mantenerse estable y no modificarse desde la app.
 insert into public.schedule_blocks (dia, hora_inicio, hora_fin, curso_id, aula)
 select * from (values
-  ('lun', '08:00', '11:00', (select id from public.courses where nombre = 'Metodología de Desarrollo de Software'), 'FIS-LAB3'),
-  ('lun', '11:15', '12:45', (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
-  ('lun', '12:45', '14:15', (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
-  ('mar', '09:30', '11:00', (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS306C'),
-  ('mar', '11:15', '12:45', (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS-LAB2'),
-  ('mie', '08:00', '09:30', (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
-  ('mie', '09:30', '11:00', (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
-  ('mie', '11:15', '13:30', (select id from public.courses where nombre = 'Ingeniería del Conocimiento'), 'FIS306C'),
-  ('jue', '08:00', '09:30', (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
-  ('jue', '09:30', '11:00', (select id from public.courses where nombre = 'Metodología de Desarrollo de Software'), 'FIS306C'),
-  ('jue', '11:15', '12:45', (select id from public.courses where nombre = 'Estructura de Datos'), 'FIS306C'),
-  ('jue', '12:45', '14:15', (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS-LAB2'),
-  ('vie', '08:00', '09:30', (select id from public.courses where nombre = 'Estructura de Datos'), 'FIS-LAB1'),
-  ('vie', '11:15', '12:45', (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
-  ('vie', '12:45', '14:15', (select id from public.courses where nombre = 'Ingeniería del Conocimiento'), 'FIS306C')
+  ('lun'::text, '08:00'::time, '11:00'::time, (select id from public.courses where nombre = 'Metodología de Desarrollo de Software'), 'FIS-LAB3'),
+  ('lun'::text, '11:15'::time, '12:45'::time, (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
+  ('lun'::text, '12:45'::time, '14:15'::time, (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
+  ('mar'::text, '09:30'::time, '11:00'::time, (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS306C'),
+  ('mar'::text, '11:15'::time, '12:45'::time, (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS-LAB2'),
+  ('mie'::text, '08:00'::time, '09:30'::time, (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
+  ('mie'::text, '09:30'::time, '11:00'::time, (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
+  ('mie'::text, '11:15'::time, '13:30'::time, (select id from public.courses where nombre = 'Ingeniería del Conocimiento'), 'FIS306C'),
+  ('jue'::text, '08:00'::time, '09:30'::time, (select id from public.courses where nombre = 'Estadística II'), 'FIS306C'),
+  ('jue'::text, '09:30'::time, '11:00'::time, (select id from public.courses where nombre = 'Metodología de Desarrollo de Software'), 'FIS306C'),
+  ('jue'::text, '11:15'::time, '12:45'::time, (select id from public.courses where nombre = 'Estructura de Datos'), 'FIS306C'),
+  ('jue'::text, '12:45'::time, '14:15'::time, (select id from public.courses where nombre = 'Investigación de Operaciones'), 'FIS-LAB2'),
+  ('vie'::text, '08:00'::time, '09:30'::time, (select id from public.courses where nombre = 'Estructura de Datos'), 'FIS-LAB1'),
+  ('vie'::text, '11:15'::time, '12:45'::time, (select id from public.courses where nombre = 'Arquitectura Tecnológica'), 'FIS306C'),
+  ('vie'::text, '12:45'::time, '14:15'::time, (select id from public.courses where nombre = 'Ingeniería del Conocimiento'), 'FIS306C')
 ) as v(dia, hora_inicio, hora_fin, curso_id, aula)
 on conflict do nothing;
