@@ -10,10 +10,20 @@ cada navegador tiene su propia copia de los datos.
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
 Abre la URL que muestra la terminal (normalmente `http://localhost:5173`).
+
+## Configuración de Supabase
+
+1. Crea un proyecto en Supabase.
+2. Copia la URL del proyecto y la clave pública a tu archivo `.env`.
+3. Ejecuta el SQL de `supabase/schema.sql` en el SQL editor de Supabase.
+4. Si no tienes esas variables, la app sigue funcionando en modo local con `localStorage` como fallback.
+
+Esto te deja preparada la app para una base de datos real, pero sin romper la demo local mientras configuras el proyecto.
 
 **Cuentas de la demo** (ya vienen creadas con datos de ejemplo):
 

@@ -1,14 +1,39 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
 import { loadDb, saveDb } from '../lib/store'
 import { dbReducer } from '../lib/reducer'
+import { isSupabaseEnabled, loadDbFromSupabase, saveDbToSupabase } from '../lib/supabaseDb'
 
 const AppDataContext = createContext(null)
 
 export function AppDataProvider({ children }) {
-  const [db, dispatch] = useReducer(dbReducer, undefined, loadDb)
+  const [db, dispatch] = useReducer(dbReducer, null, () => null)
 
   useEffect(() => {
-    saveDb(db)
+    let active = true
+
+    async function hydrate() {
+      const remoteDb = await loadDbFromSupabase()
+      if (!active) return
+
+      const nextDb = remoteDb || loadDb()
+      dispatch({ type: 'HYDRATE', payload: nextDb })
+    }
+
+    hydrate()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!db) return
+
+    if (isSupabaseEnabled()) {
+      saveDbToSupabase(db)
+    } else {
+      saveDb(db)
+    }
   }, [db])
 
   const value = useMemo(() => ({ db, dispatch }), [db])

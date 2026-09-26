@@ -48,6 +48,12 @@ function contarCompletadas(db, userId) {
 }
 
 export function dbReducer(state, action) {
+  if (action.type === 'HYDRATE') {
+    return action.payload || state
+  }
+
+  if (!state) return state
+
   const db = structuredClone(state)
 
   switch (action.type) {
