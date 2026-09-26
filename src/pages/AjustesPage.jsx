@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { useAuth } from '../context/AuthContext'
 import { getTheme, setTheme } from '../lib/theme'
 import * as notif from '../lib/notifications'
+import { isSupabaseEnabled } from '../lib/supabaseDb'
 
 export default function AjustesPage() {
   const { db } = useAppData()
@@ -11,6 +12,7 @@ export default function AjustesPage() {
   const [permission, setPermission] = useState(notif.getPermission())
   const [prefs, setPrefsState] = useState(notif.getPrefs())
   const [testMsg, setTestMsg] = useState('')
+  const supabaseActive = isSupabaseEnabled()
   const [pwForm, setPwForm] = useState({ actual: '', nueva: '' })
   const [pwMsg, setPwMsg] = useState('')
 
@@ -94,7 +96,9 @@ export default function AjustesPage() {
           </>
         )}
         <p className="settings-caveat">
-          Al ser una app sin servidor propio, los avisos solo llegan mientras StudyFlow está abierto en el navegador.
+          {supabaseActive
+            ? 'La app está conectada a Supabase y los avisos se disparan desde la sesión activa del navegador.'
+            : 'La app está en modo local de demostración; la base real se activa al configurar Supabase y el entorno de variables.'}
         </p>
       </section>
 
@@ -119,8 +123,9 @@ export default function AjustesPage() {
       <section className="card">
         <h2>Privacidad</h2>
         <p className="ink-soft">
-          Todos tus datos (tareas, comentarios, progreso) se guardan solo en este navegador. Nada se envía a un servidor —
-          por ahora, StudyFlow es una demo local. Si cambias de dispositivo o navegador, no verás la misma información.
+          {supabaseActive
+            ? 'Todos tus datos se sincronizan con la base de Supabase y se mantienen disponibles en la sesión real del proyecto.'
+            : 'Actualmente la información todavía vive principalmente en este navegador como respaldo local de demostración. Si activas Supabase, la sincronización real será la fuente principal.'}
         </p>
       </section>
     </div>

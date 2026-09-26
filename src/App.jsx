@@ -38,9 +38,9 @@ function Shell() {
   const [newTaskOpen, setNewTaskOpen] = useState(false)
 
   useEffect(() => {
+    if (!db || !user) return
     notif.revisarYAvisar(db, user.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [db, user])
 
   function navigate(page) {
     setNav({ page, taskId: null })
@@ -66,7 +66,7 @@ function Shell() {
         onToggleCollapsed={() => setCollapsed((v) => !v)}
       />
       <div className="main-col">
-        <TopBar page={page} onMenuClick={() => setMobileOpen(true)} onNewTask={() => setNewTaskOpen(true)} />
+        <TopBar page={page} onMenuClick={() => setMobileOpen(true)} onNewTask={() => setNewTaskOpen(true)} onNavigate={navigate} />
         <div className="content">
           {page === 'dashboard' && <DashboardPage {...commonProps} />}
           {page === 'hoy' && <HoyPage onOpenTask={openTask} />}

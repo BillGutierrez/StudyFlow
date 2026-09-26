@@ -1,3 +1,6 @@
+import { createNotification } from './supabaseService.js'
+import { isSupabaseEnabled } from './supabaseDb.js'
+
 const LAST_KEY = 'studyflow:lastNotified'
 const PREFS_KEY = 'studyflow:notifPrefs'
 
@@ -48,27 +51,62 @@ function beep() {
 
 export function dispararAviso(titulo, cuerpo) {
   const prefs = getPrefs()
-  if (isSupported() && Notification.permission === 'granted') {
-    // eslint-disable-next-line no-new
-    new Notification(titulo, { body: cuerpo, tag: 'studyflow' })
+
+  try {
+    if (isSupported() && Notification.permission === 'granted') {
+      // eslint-disable-next-line no-new
+      new Notification(titulo, { body: cuerpo, tag: 'studyflow' })
+    }
+  } catch {
+    // navegador sin soporte o permisos no disponibles
   }
+
   if (prefs.sonido) beep()
-  if (prefs.vibracion && navigator.vibrate) navigator.vibrate([80, 40, 80])
+  if (prefs.vibracion && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([80, 40, 80])
 }
 
 function hoyKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
+export async function persistNotificationToSupabase({ userId, texto, tipo = 'info', link = null }) {
+  if (!userId || !texto || !isSupabaseEnabled()) return null
+
+  try {
+    return await createNotification({
+      user_id: userId,
+      tipo,
+      texto,
+      link,
+      leida: false,
+      created_at: new Date().toISOString(),
+    })
+  } catch {
+    return null
+  }
+}
+
 export function revisarYAvisar(db, userId, { force = false } = {}) {
-  if (!force && localStorage.getItem(LAST_KEY) === hoyKey()) return null
-  const tareas = Object.values(db.tareas).filter((t) => !t.completadoPor[userId])
+  if (!db || !userId) return null
+
+  try {
+    if (!force && localStorage.getItem(LAST_KEY) === hoyKey()) return null
+  } catch {
+    // storage no disponible
+  }
+
+  const tareas = Object.values(db.tareas || {}).filter((t) => !t.completadoPor[userId])
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  const vencidas = tareas.filter((t) => new Date(t.fechaEntrega + 'T00:00:00') < hoy)
+  const vencidas = tareas.filter((t) => t.fechaEntrega && new Date(t.fechaEntrega + 'T00:00:00') < hoy)
   const hoyVencen = tareas.filter((t) => t.fechaEntrega === hoy.toISOString().slice(0, 10))
 
-  localStorage.setItem(LAST_KEY, hoyKey())
+  try {
+    localStorage.setItem(LAST_KEY, hoyKey())
+  } catch {
+    // ignorar
+  }
+
   if (vencidas.length === 0 && hoyVencen.length === 0) return null
 
   const partes = []

@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext'
 import { useAuth } from '../context/AuthContext'
 import { chocaConHorario } from '../lib/selectors'
 import { DAY_KEYS, toISODate } from '../lib/dates'
+import { hasSupabaseConnection, createTask, updateTask } from '../lib/supabaseService'
 
 const MAX_FILE_KB = 300
 
@@ -80,7 +81,7 @@ export default function TaskFormModal({ open, onClose, task }) {
     )
   }
 
-  function guardar(forzar = false) {
+  async function guardar(forzar = false) {
     const errs = validar()
     setErrores(errs)
     if (errs.length) return
@@ -103,10 +104,41 @@ export default function TaskFormModal({ open, onClose, task }) {
         : null,
     }
 
-    if (task) {
-      dispatch({ type: 'UPDATE_TASK', id: task.id, cambios: payload, userId: user.id })
+    if (hasSupabaseConnection()) {
+      if (task) {
+        await updateTask(task.id, {
+          titulo: payload.titulo,
+          descripcion: payload.descripcion,
+          curso_id: payload.cursoId,
+          etiqueta_id: payload.etiquetaId || null,
+          fecha_entrega: payload.fechaEntrega,
+          hora_entrega: payload.horaEntrega,
+          planificacion: payload.planificacion,
+          archivos: payload.archivos,
+          updated_at: new Date().toISOString(),
+        })
+      } else {
+        await createTask({
+          titulo: payload.titulo,
+          descripcion: payload.descripcion,
+          curso_id: payload.cursoId,
+          etiqueta_id: payload.etiquetaId || null,
+          fecha_entrega: payload.fechaEntrega,
+          hora_entrega: payload.horaEntrega,
+          planificacion: payload.planificacion,
+          archivos: payload.archivos,
+          creado_por: user.id,
+          historial: [{ accion: 'creó la tarea', usuario: user.id, fecha: Date.now() }],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+      }
     } else {
-      dispatch({ type: 'ADD_TASK', payload, userId: user.id })
+      if (task) {
+        dispatch({ type: 'UPDATE_TASK', id: task.id, cambios: payload, userId: user.id })
+      } else {
+        dispatch({ type: 'ADD_TASK', payload, userId: user.id })
+      }
     }
     onClose()
   }

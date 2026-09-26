@@ -1,6 +1,7 @@
-import { uid } from './store'
-import { todayISO, daysUntil } from './dates'
-import { calcularNivel, XP_POR_TAREA, XP_BONUS_ANTICIPADA, XP_POR_MISION, CATALOGO_LOGROS } from './gamification'
+import { uid } from './store.js'
+import { todayISO, daysUntil } from './dates.js'
+import { calcularNivel, XP_POR_TAREA, XP_BONUS_ANTICIPADA, XP_POR_MISION, CATALOGO_LOGROS } from './gamification.js'
+import { persistNotificationToSupabase } from './notifications.js'
 
 const EMOJIS_PERMITIDOS = ['👍', '❤️', '😂', '😮', '🙏', '🔥']
 const EDIT_WINDOW_MS = 5 * 60 * 1000
@@ -13,6 +14,9 @@ function withHistorial(tarea, accion, usuario) {
 function notify(db, userId, texto, tipo = 'info', link = null) {
   const id = uid('notif')
   db.notificaciones[id] = { id, userId, tipo, texto, link, fecha: Date.now(), leida: false }
+  if (userId && texto) {
+    persistNotificationToSupabase({ userId, texto, tipo, link }).catch(() => {})
+  }
 }
 
 function otorgarXP(db, userId, cantidad) {
@@ -45,6 +49,52 @@ function desbloquearLogro(db, userId, logroId) {
 
 function contarCompletadas(db, userId) {
   return Object.values(db.tareas).filter((t) => t.completadoPor[userId]).length
+}
+
+function accionLabel(accion) {
+  switch (accion) {
+    case 'warning': return 'advertencia'
+    case 'mute': return 'silencio de 30 min'
+    case 'deactivate': return 'desactivación de cuenta'
+    case 'reject': return 'rechazo del reporte'
+    default: return 'decisión de moderación'
+  }
+}
+
+function aplicarAccionModeracion(db, userId, accion, adminId, observacion = '') {
+  const u = db.users[userId]
+  if (!u) return
+
+  const entrada = {
+    fecha: Date.now(),
+    adminId,
+    accion,
+    observacion: observacion || 'Acción aplicada por el moderador.',
+  }
+
+  u.moderacionHistorial = [...(u.moderacionHistorial || []), entrada]
+  u.ultimaModeracion = Date.now()
+
+  switch (accion) {
+    case 'warning': {
+      u.warningCount = (u.warningCount || 0) + 1
+      notify(db, userId, 'Tu conducta ha sido advertida por el equipo de moderación.', 'moderacion')
+      break
+    }
+    case 'mute': {
+      u.silenciadoHasta = Date.now() + 30 * 60 * 1000
+      notify(db, userId, 'Has sido silenciado por 30 minutos por el equipo de moderación.', 'moderacion')
+      break
+    }
+    case 'deactivate': {
+      u.activo = false
+      notify(db, userId, 'Tu cuenta ha sido desactivada por el equipo de moderación.', 'moderacion')
+      break
+    }
+    case 'reject':
+    default:
+      break
+  }
 }
 
 export function dbReducer(state, action) {
@@ -156,17 +206,9 @@ export function dbReducer(state, action) {
       delete db.etiquetas[action.id]
       return db
     }
-    case 'ADD_SCHEDULE_BLOCK': {
-      const id = uid('hor')
-      db.horario[id] = { id, ...action.payload }
-      return db
-    }
-    case 'UPDATE_SCHEDULE_BLOCK': {
-      db.horario[action.id] = { ...db.horario[action.id], ...action.cambios }
-      return db
-    }
+    case 'ADD_SCHEDULE_BLOCK':
+    case 'UPDATE_SCHEDULE_BLOCK':
     case 'DELETE_SCHEDULE_BLOCK': {
-      delete db.horario[action.id]
       return db
     }
 
@@ -214,7 +256,24 @@ export function dbReducer(state, action) {
       if (!c) return db
       db.comentarios[action.id] = { ...c, reportado: true }
       const rid = uid('rep')
-      db.reportes[rid] = { id: rid, tipo: 'comentario', refId: action.id, userId: action.userId, motivo: action.motivo, fecha: Date.now(), resuelto: false }
+      db.reportes[rid] = {
+        id: rid,
+        tipo: 'comentario',
+        refId: action.id,
+        userId: action.userId,
+        targetUserId: c.userId,
+        motivo: action.motivo,
+        fecha: Date.now(),
+        estado: 'pendiente',
+        accion: null,
+        resuelto: false,
+        resueltoPor: null,
+        resueltoEn: null,
+        observacion: '',
+      }
+      Object.values(db.users)
+        .filter((u) => u.rol === 'superadmin')
+        .forEach((u) => notify(db, u.id, `Nuevo reporte pendiente: ${action.motivo}`, 'moderacion', rid))
       return db
     }
     case 'PIN_COMMENT': {
@@ -265,7 +324,24 @@ export function dbReducer(state, action) {
       if (!m) return db
       db.chat[action.id] = { ...m, reportado: true }
       const rid = uid('rep')
-      db.reportes[rid] = { id: rid, tipo: 'chat', refId: action.id, userId: action.userId, motivo: action.motivo, fecha: Date.now(), resuelto: false }
+      db.reportes[rid] = {
+        id: rid,
+        tipo: 'chat',
+        refId: action.id,
+        userId: action.userId,
+        targetUserId: m.userId,
+        motivo: action.motivo,
+        fecha: Date.now(),
+        estado: 'pendiente',
+        accion: null,
+        resuelto: false,
+        resueltoPor: null,
+        resueltoEn: null,
+        observacion: '',
+      }
+      Object.values(db.users)
+        .filter((u) => u.rol === 'superadmin')
+        .forEach((u) => notify(db, u.id, `Nuevo reporte pendiente: ${action.motivo}`, 'moderacion', rid))
       return db
     }
     case 'PIN_CHAT': {
@@ -274,10 +350,70 @@ export function dbReducer(state, action) {
       db.chat[action.id] = { ...m, fijado: !m.fijado }
       return db
     }
+    case 'DECIDE_REPORT': {
+      const r = db.reportes[action.id]
+      if (!r) return db
+
+      const accion = action.accion || 'warning'
+      const estado = accion === 'reject' ? 'rechazado' : (action.estado || 'resuelto')
+      const observacion = action.observacion || 'Revisión completada.'
+
+      db.reportes[action.id] = {
+        ...r,
+        accion,
+        estado,
+        resuelto: estado === 'resuelto' || estado === 'rechazado',
+        resueltoPor: action.adminId || r.resueltoPor,
+        resueltoEn: Date.now(),
+        observacion,
+      }
+
+      if (action.adminId) {
+        notify(
+          db,
+          action.adminId,
+          accion === 'reject'
+            ? 'Reporte rechazado: no se aplicó sanción.'
+            : `Reporte resuelto: aplicada ${accionLabel(accion)}.`,
+          'moderacion',
+          action.id,
+        )
+      }
+
+      if (estado === 'resuelto' && accion !== 'reject') {
+        aplicarAccionModeracion(db, r.targetUserId || r.userId, accion, action.adminId, observacion)
+      }
+
+      return db
+    }
     case 'RESOLVE_REPORT': {
       const r = db.reportes[action.id]
       if (!r) return db
-      db.reportes[action.id] = { ...r, resuelto: true }
+      const accion = action.accion || 'warning'
+      const estado = accion === 'reject' ? 'rechazado' : 'resuelto'
+      db.reportes[action.id] = {
+        ...r,
+        estado,
+        accion,
+        resuelto: true,
+        resueltoPor: action.adminId || null,
+        resueltoEn: Date.now(),
+        observacion: action.observacion || 'Revisión completada.',
+      }
+      if (action.adminId) {
+        notify(
+          db,
+          action.adminId,
+          accion === 'reject'
+            ? 'Reporte rechazado: no se aplicó sanción.'
+            : `Reporte resuelto: aplicada ${accionLabel(accion)}.`,
+          'moderacion',
+          action.id,
+        )
+      }
+      if (accion !== 'reject' && accion) {
+        aplicarAccionModeracion(db, r.targetUserId || r.userId, accion, action.adminId, action.observacion)
+      }
       return db
     }
     case 'MUTE_USER': {

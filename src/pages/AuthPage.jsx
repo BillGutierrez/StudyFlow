@@ -54,7 +54,7 @@ export default function AuthPage() {
           <form onSubmit={submitLogin} className="auth-form">
             <label className="field-block">
               <span>Usuario</span>
-              <input value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} placeholder="ej. bill" required />
+              <input value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} placeholder="Tu nombre de usuario" required />
             </label>
             <label className="field-block">
               <span>Contraseña</span>
@@ -66,7 +66,7 @@ export default function AuthPage() {
               <button type="button" onClick={() => setModo('reset')}>Olvidé mi contraseña</button>
             </div>
             <p className="auth-demo-hint">
-              Demo: <code>bill / admin123</code> (superadmin) · <code>ana / demo123</code> (estudiante)
+              Con Supabase activado, la autenticación y los perfiles se gestionan desde la base real del proyecto.
             </p>
           </form>
         )}
@@ -120,7 +120,7 @@ export default function AuthPage() {
         {modo === 'reset' && (
           <form onSubmit={submitReset} className="auth-form">
             <p className="auth-note">
-              Esta app aún no tiene backend de correo real, así que por ahora el restablecimiento es directo. En producción esto enviaría un enlace por email.
+              Este flujo funciona como respaldo local. Con Supabase operativo, la recuperación real se conectaría a Auth + email de la plataforma.
             </p>
             <label className="field-block">
               <span>Usuario</span>

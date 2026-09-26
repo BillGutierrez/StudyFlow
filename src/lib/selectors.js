@@ -1,4 +1,4 @@
-import { daysUntil, minutesOf, toISODate, DAY_KEYS } from './dates'
+import { daysUntil, minutesOf, toISODate, DAY_KEYS } from './dates.js'
 
 export function tareasArray(db) {
   return Object.values(db.tareas)

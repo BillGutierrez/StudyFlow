@@ -24,6 +24,18 @@ export default function DashboardPage({ onOpenTask, onNavigate, onNewTask }) {
     .sort((a, b) => (a.fechaEntrega < b.fechaEntrega ? -1 : 1))
     .slice(0, 5)
 
+  const nextKey = proximas[0]?.fechaEntrega
+  const nextDueText = nextKey
+    ? new Date(`${nextKey}T00:00:00`).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })
+    : 'Sin tareas'
+
+  const summaryCards = [
+    { label: 'Hoy', value: String(tareasHoy.length), detail: tareasHoy.length === 1 ? 'tarea pendiente' : 'tareas pendientes' },
+    { label: 'Urgentes', value: String(urgentes.length), detail: urgentes.length === 1 ? 'prioridad alta' : 'prioridades altas' },
+    { label: 'Progreso', value: `${stats.porcentaje}%`, detail: `${stats.completadas.length} completadas` },
+    { label: 'Racha', value: `${user.racha}d`, detail: `mejor ${user.mejorRacha ?? user.racha}d` },
+  ]
+
   return (
     <div className="page dashboard">
       <div className="dash-hero">
@@ -36,9 +48,26 @@ export default function DashboardPage({ onOpenTask, onNavigate, onNewTask }) {
           </h1>
           <p className="dash-date">{hoy.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
-        <button type="button" className="btn-primary dash-cta" onClick={onNewTask} style={{ display: isSuperadmin ? 'inline-flex' : 'none' }}>
-          <Icon.Plus /> Nueva tarea
-        </button>
+
+        <div className="dash-hero-side">
+          <div className="dash-next-deadline">
+            <span>Próxima entrega</span>
+            <strong>{nextDueText}</strong>
+          </div>
+          <button type="button" className="btn-primary dash-cta" onClick={onNewTask} style={{ display: isSuperadmin ? 'inline-flex' : 'none' }}>
+            <Icon.Plus /> Nueva tarea
+          </button>
+        </div>
+      </div>
+
+      <div className="dash-summary-grid">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="dash-summary-card">
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.detail}</small>
+          </div>
+        ))}
       </div>
 
       <div className="dash-grid">

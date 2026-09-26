@@ -10,6 +10,7 @@ import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TaskFormModal from '../components/TaskFormModal'
 import * as Icon from '../components/icons'
+import { hasSupabaseConnection, addComment, updateComment, deleteComment } from '../lib/supabaseService'
 
 export default function TaskDetailPage({ taskId, onBack }) {
   const { db, dispatch } = useAppData()
@@ -40,15 +41,25 @@ export default function TaskDetailPage({ taskId, onBack }) {
     .sort((a, b) => (b.fijado - a.fijado) || a.fecha - b.fecha)
   const { faltan, completaron } = quienFalta(db, taskId)
 
-  function enviarComentario(e) {
+  async function enviarComentario(e) {
     e.preventDefault()
     if (!texto.trim()) return
-    dispatch({ type: 'ADD_COMMENT', tareaId: taskId, userId: user.id, texto: texto.trim() })
+
+    if (hasSupabaseConnection()) {
+      await addComment({ tarea_id: taskId, texto: texto.trim() })
+    } else {
+      dispatch({ type: 'ADD_COMMENT', tareaId: taskId, userId: user.id, texto: texto.trim() })
+    }
+
     setTexto('')
   }
 
-  function guardarEdicion(id) {
-    dispatch({ type: 'EDIT_COMMENT', id, userId: user.id, texto: editText.trim() })
+  async function guardarEdicion(id) {
+    if (hasSupabaseConnection()) {
+      await updateComment(id, editText.trim())
+    } else {
+      dispatch({ type: 'EDIT_COMMENT', id, userId: user.id, texto: editText.trim() })
+    }
     setEditing(null)
   }
 
@@ -191,7 +202,13 @@ export default function TaskDetailPage({ taskId, onBack }) {
                       <button type="button" className="link-btn" onClick={() => { setEditing(c.id); setEditText(c.texto) }}>Editar</button>
                     )}
                     {(c.userId === user.id || isSuperadmin) && (
-                      <button type="button" className="link-btn" onClick={() => dispatch({ type: 'DELETE_COMMENT', id: c.id, userId: user.id, isAdmin: isSuperadmin })}>
+                      <button type="button" className="link-btn" onClick={async () => {
+                        if (hasSupabaseConnection()) {
+                          await deleteComment(c.id)
+                        } else {
+                          dispatch({ type: 'DELETE_COMMENT', id: c.id, userId: user.id, isAdmin: isSuperadmin })
+                        }
+                      }}>
                         Eliminar
                       </button>
                     )}

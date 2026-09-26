@@ -1,4 +1,4 @@
-import { toISODate } from './dates'
+import { toISODate } from './dates.js'
 
 const STORAGE_KEY = 'studyflow:db:v1'
 const SESSION_KEY = 'studyflow:session:v1'

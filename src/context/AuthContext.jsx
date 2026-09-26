@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { loadSession, saveSession } from '../lib/store'
-import { isSupabaseEnabled } from '../lib/supabaseDb'
-import { supabase } from '../supabaseClient'
-import { useAppData } from './AppDataContext'
+import { loadSession, saveSession } from '../lib/store.js'
+import { isSupabaseEnabled } from '../lib/supabaseDb.js'
+import { upsertProfile } from '../lib/supabaseService.js'
+import { supabase } from '../supabaseClient.js'
+import { useAppData } from './AppDataContext.jsx'
 
 const AuthContext = createContext(null)
 
@@ -36,14 +37,21 @@ async function syncSupabaseProfile(username, profile) {
     silenciado_hasta: profile?.silenciadoHasta || null,
   }
 
-  const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
-  if (error) {
-    console.warn('No se pudo sincronizar el perfil con Supabase:', error)
-  }
+  await upsertProfile(payload)
 
   if (email) {
     await supabase.auth.updateUser({ email })
   }
+}
+
+function inferUsernameFromAuthUser(authUser) {
+  const meta = authUser?.user_metadata || {}
+  const fromMeta = String(meta.username || meta.user_name || '').trim().toLowerCase()
+  if (fromMeta) return fromMeta
+
+  const email = String(authUser?.email || '').trim().toLowerCase()
+  if (!email) return ''
+  return email.split('@')[0]
 }
 
 export function AuthProvider({ children }) {
@@ -57,14 +65,40 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!supabase || !isSupabaseEnabled()) return
 
+    async function hydrateSessionUser() {
+      const { data: sessionData, error } = await supabase.auth.getSession()
+      if (error || !sessionData?.session?.user) return
+
+      const authUser = sessionData.session.user
+      const username = inferUsernameFromAuthUser(authUser)
+      const localUser = username && db?.users?.[username] ? username : null
+
+      if (localUser) {
+        setUserId(localUser)
+        await syncSupabaseProfile(localUser, db.users[localUser])
+      }
+    }
+
+    hydrateSessionUser()
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUserId(null)
+        return
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const authUser = session?.user
+        const username = inferUsernameFromAuthUser(authUser)
+        if (username && db?.users?.[username]) {
+          setUserId(username)
+          syncSupabaseProfile(username, db.users[username])
+        }
       }
     })
 
     return () => authListener.subscription.unsubscribe()
-  }, [])
+  }, [db])
 
   const user = userId ? (db?.users?.[userId] ?? null) : null
 
@@ -159,7 +193,7 @@ export function AuthProvider({ children }) {
     setUserId(null)
   }
 
-  // Recuperación mock: sin backend de correo real, se resetea localmente.
+  // Recuperación local: el flujo de restablecimiento sigue siendo local hasta conectar un servicio de email real.
   function resetPassword(username, nuevaPassword) {
     const id = username.toLowerCase().trim()
     if (!db.users[id]) return { ok: false, error: 'No existe una cuenta con ese usuario.' }

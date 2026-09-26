@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
+import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/Avatar'
 import CursosPage from './CursosPage'
 import EtiquetasPage from './EtiquetasPage'
@@ -25,17 +26,54 @@ function tiempoDesde(ts) {
 
 export default function AdminPage({ onOpenTask }) {
   const { db, dispatch } = useAppData()
+  const { user } = useAuth()
   const [tab, setTab] = useState('usuarios')
+  const [decisionMap, setDecisionMap] = useState({})
 
   const usuarios = Object.values(db.users).filter((u) => u.rol === 'usuario')
   const global = estadisticasGlobales(db)
   const reportes = Object.values(db.reportes).sort((a, b) => b.fecha - a.fecha)
+  const reportesPendientes = reportes.filter((r) => r.estado !== 'resuelto' && r.estado !== 'rechazado')
+  const reportesHistorial = reportes.filter((r) => r.estado === 'resuelto' || r.estado === 'rechazado')
+  const moderacionOptions = [
+    { value: 'warning', label: 'Advertencia' },
+    { value: 'mute', label: 'Silencio 30 min' },
+    { value: 'deactivate', label: 'Desactivar cuenta' },
+    { value: 'reject', label: 'Rechazar reporte' },
+  ]
+  const usuariosActivos = usuarios.filter((u) => u.activo).length
+  const usuariosSilenciados = usuarios.filter((u) => u.silenciadoHasta && u.silenciadoHasta > Date.now()).length
+
+  const obtenerEvidencia = (r) => {
+    if (!r) return 'Sin evidencia disponible.'
+    if (r.tipo === 'comentario') return db.comentarios?.[r.refId]?.texto || 'No hay contenido asociado.'
+    return db.chat?.[r.refId]?.texto || 'No hay contenido asociado.'
+  }
 
   return (
     <div className="page">
       <header className="page-header">
         <h1>Panel Superadmin</h1>
       </header>
+
+      <div className="admin-overview">
+        <div className="admin-stat-card">
+          <span>Usuarios activos</span>
+          <strong>{usuariosActivos}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span>Reportes pendientes</span>
+          <strong>{reportesPendientes.length}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span>Silenciados</span>
+          <strong>{usuariosSilenciados}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span>Cumplimiento</span>
+          <strong>{global.porcentajeGlobal}%</strong>
+        </div>
+      </div>
 
       <div className="admin-tabs">
         {TABS.map((t) => (
@@ -84,25 +122,67 @@ export default function AdminPage({ onOpenTask }) {
 
       {tab === 'moderacion' && (
         <div className="admin-table-wrap">
-          <h2>Reportes</h2>
-          {reportes.length === 0 ? <p className="empty">No hay reportes pendientes.</p> : (
+          <h2>Cola de moderación</h2>
+          {reportesPendientes.length === 0 ? <p className="empty">No hay reportes pendientes.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Tipo</th><th>Reportado por</th><th>Motivo</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Usuario afectado</th><th>Reportado por</th><th>Evidencia</th><th>Fecha</th><th>Decisión</th><th></th></tr></thead>
               <tbody>
-                {reportes.map((r) => (
+                {reportesPendientes.map((r) => (
                   <tr key={r.id}>
                     <td>{r.tipo === 'comentario' ? 'Muro de tarea' : 'Chat general'}</td>
-                    <td>{db.users[r.userId]?.nombre}</td>
-                    <td>{r.motivo}</td>
-                    <td>{new Date(r.fecha).toLocaleString('es-PE')}</td>
-                    <td>{r.resuelto ? 'Resuelto' : 'Pendiente'}</td>
+                    <td>{db.users[r.targetUserId || r.userId]?.nombre || 'Usuario'}</td>
+                    <td>{db.users[r.userId]?.nombre || 'Usuario'}</td>
                     <td>
-                      {!r.resuelto && (
-                        <button type="button" className="link-btn" onClick={() => dispatch({ type: 'RESOLVE_REPORT', id: r.id })}>
-                          Marcar resuelto
-                        </button>
-                      )}
+                      <div className="admin-evidence">
+                        <strong>{r.motivo}</strong>
+                        <span>{obtenerEvidencia(r)}</span>
+                      </div>
                     </td>
+                    <td>{new Date(r.fecha).toLocaleString('es-PE')}</td>
+                    <td>
+                      <select
+                        value={decisionMap[r.id] || 'warning'}
+                        onChange={(e) => setDecisionMap((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                        className="admin-select"
+                      >
+                        {moderacionOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => dispatch({
+                          type: 'DECIDE_REPORT',
+                          id: r.id,
+                          adminId: user.id,
+                          accion: decisionMap[r.id] || 'warning',
+                          observacion: `Revisión moderada por ${user.nombre || user.id}.`,
+                        })}
+                      >
+                        Aplicar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <h2 style={{ marginTop: 24 }}>Historial</h2>
+          {reportesHistorial.length === 0 ? <p className="empty">Todavía no hay decisiones de moderación.</p> : (
+            <table className="admin-table">
+              <thead><tr><th>Tipo</th><th>Motivo</th><th>Acción</th><th>Estado</th><th>Fecha</th></tr></thead>
+              <tbody>
+                {reportesHistorial.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.tipo === 'comentario' ? 'Muro de tarea' : 'Chat general'}</td>
+                    <td>{r.motivo}</td>
+                    <td>{r.accion || '—'}</td>
+                    <td>{r.estado === 'rechazado' ? 'Rechazado' : 'Resuelto'}</td>
+                    <td>{new Date(r.resueltoEn || r.fecha).toLocaleString('es-PE')}</td>
                   </tr>
                 ))}
               </tbody>
